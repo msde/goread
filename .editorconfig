@@ -12,5 +12,6 @@ max_line_length=76
 [*.go]
 
 [*.js]
+indent_size = 2
 
 # end
