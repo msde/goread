@@ -386,7 +386,8 @@ func fetchFeed(c mpg.Context, origUrl, fetchUrl string) (*Feed, []*Story, error)
 		c.Warningf("fetch feed error: %v", err)
 		return nil, nil, fmt.Errorf("Could not fetch feed")
 	} else {
-		c.Warningf("fetch feed error: status code: %s", resp.Status)
+		c.Warningf("fetch feed error: status code: %s %s",
+			resp.Status, resp.Body)
 		return nil, nil, fmt.Errorf("Bad response code from server")
 	}
 }
