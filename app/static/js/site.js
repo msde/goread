@@ -43,10 +43,10 @@ goReadAppModule.controller('GoreadCtrl', function($scope, $http, $timeout, $wind
 			success: function() {
 				$scope.loaded();
 				$scope.showMessage("OPML import is happening." +
-					" It can take a minute." +
-					" Don't reorganize your feeds" +
-					" until it's completed importing." +
-					" Refresh to see its progress.");
+													 " It can take a minute." +
+													 " Don't reorganize your feeds" +
+													 " until it's completed importing." +
+													 " Refresh to see its progress.");
 			}
 		});
 	};
