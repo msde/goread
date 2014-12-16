@@ -49,9 +49,6 @@ func init() {
 	); err != nil {
 		log.Fatal(err)
 	}
-
-	miniprofiler.ToggleShortcut = "Alt+C"
-	miniprofiler.Position = "bottomleft"
 }
 
 func RegisterHandlers(r *mux.Router) {
