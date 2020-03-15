@@ -14,21 +14,22 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-package goapp
+package goread
 
 import (
 	"fmt"
 	"net/http"
 	"time"
 
-	mpg "github.com/MiniProfiler/go/miniprofiler_gae"
 	"github.com/mjibson/goon"
 
-	"appengine/datastore"
-	"appengine/user"
+	"google.golang.org/appengine/datastore"
+	"google.golang.org/appengine/log"
+	"google.golang.org/appengine/user"
 )
 
-func ClearRead(c mpg.Context, w http.ResponseWriter, r *http.Request) {
+func ClearRead(w http.ResponseWriter, r *http.Request) {
+	c := r.Context()
 	if !isDevServer {
 		return
 	}
@@ -38,7 +39,7 @@ func ClearRead(c mpg.Context, w http.ResponseWriter, r *http.Request) {
 	u := &User{Id: cu.ID}
 	ud := &UserData{Id: "data", Parent: gn.Key(u)}
 	if err := gn.Get(u); err != nil {
-		c.Errorf("err: %v", err.Error())
+		log.Errorf(c, "err: %v", err.Error())
 		return
 	}
 	gn.Get(ud)
@@ -48,7 +49,8 @@ func ClearRead(c mpg.Context, w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", http.StatusFound)
 }
 
-func ClearFeeds(c mpg.Context, w http.ResponseWriter, r *http.Request) {
+func ClearFeeds(w http.ResponseWriter, r *http.Request) {
+	c := r.Context()
 	if !isDevServer {
 		return
 	}
@@ -61,7 +63,7 @@ func ClearFeeds(c mpg.Context, w http.ResponseWriter, r *http.Request) {
 		defer func() { done <- true }()
 		ud := &UserData{Id: "data", Parent: gn.Key(u)}
 		if err := gn.Get(u); err != nil {
-			c.Errorf("user del err: %v", err.Error())
+			log.Errorf(c, "user del err: %v", err.Error())
 			return
 		}
 		gn.Get(ud)
@@ -69,21 +71,21 @@ func ClearFeeds(c mpg.Context, w http.ResponseWriter, r *http.Request) {
 		ud.Read = nil
 		ud.Opml = nil
 		gn.PutMulti([]interface{}{u, ud})
-		c.Infof("%v cleared", u.Email)
+		log.Infof(c, "%v cleared", u.Email)
 	}()
 	del := func(kind string) {
 		defer func() { done <- true }()
 		q := datastore.NewQuery(kind).KeysOnly()
 		keys, err := gn.GetAll(q, nil)
 		if err != nil {
-			c.Errorf("err: %v", err.Error())
+			log.Errorf(c, "err: %v", err.Error())
 			return
 		}
 		if err := gn.DeleteMulti(keys); err != nil {
-			c.Errorf("err: %v", err.Error())
+			log.Errorf(c, "err: %v", err.Error())
 			return
 		}
-		c.Infof("%v deleted", kind)
+		log.Infof(c, "%v deleted", kind)
 	}
 	types := []interface{}{
 		&Feed{},
@@ -104,7 +106,7 @@ func ClearFeeds(c mpg.Context, w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, fmt.Sprintf("%s?url=http://localhost:8080%s", routeUrl("add-subscription"), routeUrl("test-atom")), http.StatusFound)
 }
 
-func TestAtom(c mpg.Context, w http.ResponseWriter, r *http.Request) {
+func TestAtom(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(testAtom))
 }
 

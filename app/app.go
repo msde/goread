@@ -1,4 +1,4 @@
-package app
+package main
 
 import (
 	"net/http"
@@ -6,10 +6,17 @@ import (
 	"github.com/gorilla/mux"
 
 	app "github.com/mjibson/goread"
+
+	"google.golang.org/appengine"
 )
 
 func init() {
 	router := mux.NewRouter()
 	app.RegisterHandlers(router)
 	http.Handle("/", router)
+}
+
+/* compatibility for go111 */
+func main() {
+	appengine.Main()
 }
