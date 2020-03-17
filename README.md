@@ -13,10 +13,11 @@ by [Michael Blakeley](https://github.com/mblakele).
 1. Install the [Go App Engine SDK](https://developers.google.com/appengine/downloads#Google_App_Engine_SDK_for_Go).
 1. Set your `GOPATH` (to something like `/home/user`), and make sure it's a directory that exists. (Note: set this on your machine's environment, not in the go.bat file.)
 1. Further commands use `goapp` which lives in the `go_appengine` directory from the SDK. Make sure it's in your `PATH`.
-1. Download goread and dependencies by running: `goapp get -d github.com/mjibson/goread`. You may get messages about unrecognized imports. Ignore them.
-1. `cd $GOPATH/src/github.com/mjibson/goread/app`.
+1. Download goread and dependencies by running: `goapp get -d github.com/mblakele/goread`. You may get messages about unrecognized imports. Ignore them.
+1. `cd $GOPATH/src/github.com/mblakele/goread/app`.
 1. Copy `app.sample.yaml` to `app.yaml`.
-1. In the `goread` directory (`cd ..` from the command above), copy `settings.go.dist` to `settings.go`.
+1. `cd ..`
+1. Copy `settings.go.dist` to `settings.go`.
 
 ### running locally
 
