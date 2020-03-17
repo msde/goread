@@ -14,7 +14,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-package goapp
+package goread
 
 import (
 	"encoding/json"
@@ -24,14 +24,15 @@ import (
 	"strings"
 	"time"
 
-	"appengine/datastore"
-	"appengine/memcache"
+	"google.golang.org/appengine/datastore"
+	"google.golang.org/appengine/log"
+	"google.golang.org/appengine/memcache"
 
-	mpg "github.com/MiniProfiler/go/miniprofiler_gae"
 	"github.com/mjibson/goon"
 )
 
-func AllFeedsOpml(c mpg.Context, w http.ResponseWriter, r *http.Request) {
+func AllFeedsOpml(w http.ResponseWriter, r *http.Request) {
+	c := r.Context()
 	gn := goon.FromContext(c)
 	q := datastore.NewQuery(gn.Kind(&Feed{})).KeysOnly()
 	keys, _ := gn.GetAll(q, nil)
@@ -62,14 +63,16 @@ func feedsToOpml(feeds []*Feed) []byte {
 	return b
 }
 
-func AllFeeds(c mpg.Context, w http.ResponseWriter, r *http.Request) {
+func AllFeeds(w http.ResponseWriter, r *http.Request) {
+	c := r.Context()
 	gn := goon.FromContext(c)
 	q := datastore.NewQuery(gn.Kind(&Feed{})).KeysOnly()
 	keys, _ := gn.GetAll(q, nil)
 	templates.ExecuteTemplate(w, "admin-all-feeds.html", keys)
 }
 
-func AdminFeed(c mpg.Context, w http.ResponseWriter, r *http.Request) {
+func AdminFeed(w http.ResponseWriter, r *http.Request) {
+	c := r.Context()
 	gn := goon.FromContext(c)
 	f := Feed{Url: r.FormValue("f")}
 	if err := gn.Get(&f); err != nil {
@@ -117,7 +120,8 @@ func AdminFeed(c mpg.Context, w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func AdminUpdateFeed(c mpg.Context, w http.ResponseWriter, r *http.Request) {
+func AdminUpdateFeed(w http.ResponseWriter, r *http.Request) {
+	c := r.Context()
 	url := r.FormValue("f")
 	if feed, stories, err := fetchFeed(c, url, url); err == nil {
 		updateFeed(c, url, feed, stories, true, false, false)
@@ -127,7 +131,8 @@ func AdminUpdateFeed(c mpg.Context, w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func AdminSubHub(c mpg.Context, w http.ResponseWriter, r *http.Request) {
+func AdminSubHub(w http.ResponseWriter, r *http.Request) {
+	c := r.Context()
 	gn := goon.FromContext(c)
 	f := Feed{Url: r.FormValue("f")}
 	if err := gn.Get(&f); err != nil {
@@ -139,7 +144,8 @@ func AdminSubHub(c mpg.Context, w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "subscribed")
 }
 
-func AdminDateFormats(c mpg.Context, w http.ResponseWriter, r *http.Request) {
+func AdminDateFormats(w http.ResponseWriter, r *http.Request) {
+	c := r.Context()
 	type df struct {
 		URL, Format string
 	}
@@ -158,7 +164,8 @@ func AdminDateFormats(c mpg.Context, w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func AdminStats(c mpg.Context, w http.ResponseWriter, r *http.Request) {
+func AdminStats(w http.ResponseWriter, r *http.Request) {
+	c := r.Context()
 	gn := goon.FromContext(c)
 	uc, _ := datastore.NewQuery(gn.Kind(&User{})).Count(c)
 	templates.ExecuteTemplate(w, "admin-stats.html", struct {
@@ -168,7 +175,8 @@ func AdminStats(c mpg.Context, w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func AdminUser(c mpg.Context, w http.ResponseWriter, r *http.Request) {
+func AdminUser(w http.ResponseWriter, r *http.Request) {
+	c := r.Context()
 	gn := goon.FromContext(c)
 	q := datastore.NewQuery(gn.Kind(&User{})).Limit(1)
 	q = q.Filter("e =", r.FormValue("u"))
@@ -199,7 +207,7 @@ func AdminUser(c mpg.Context, w http.ResponseWriter, r *http.Request) {
 			serveError(w, err)
 			return
 		}
-		c.Infof("opml updated")
+		log.Infof(c, "opml updated")
 	}
 	q = datastore.NewQuery(gn.Kind(&Log{})).Ancestor(k)
 	_, err = gn.GetAll(q, &h)

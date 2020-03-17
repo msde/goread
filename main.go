@@ -14,23 +14,23 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-package goapp
+package goread
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"html/template"
-	"log"
+	_log "log"
 	"net/http"
 	"net/url"
 	"time"
 
-	mpg "github.com/MiniProfiler/go/miniprofiler_gae"
 	"github.com/gorilla/mux"
 	"github.com/mjibson/goon"
 
-	"appengine"
-	"appengine/datastore"
+	"google.golang.org/appengine/datastore"
+	"google.golang.org/appengine/log"
 )
 
 var router = new(mux.Router)
@@ -40,59 +40,64 @@ func init() {
 	var err error
 	if templates, err = template.New("").Funcs(funcs).
 		ParseFiles(
-		"templates/base.html",
-		"templates/admin-all-feeds.html",
-		"templates/admin-date-formats.html",
-		"templates/admin-feed.html",
-		"templates/admin-stats.html",
-		"templates/admin-user.html",
-	); err != nil {
-		log.Fatal(err)
+			"templates/base.html",
+			"templates/admin-all-feeds.html",
+			"templates/admin-date-formats.html",
+			"templates/admin-feed.html",
+			"templates/admin-stats.html",
+			"templates/admin-user.html",
+		); err != nil {
+		_log.Fatal(err)
 	}
 }
 
+// TODO this looks tricky to port to go111
+// might need a rewrite....
+// use gorilla mux middleware to supply context?
 func RegisterHandlers(r *mux.Router) {
 	router = r
-	router.Handle("/", mpg.NewHandler(Main)).Name("main")
-	router.Handle("/login/google", mpg.NewHandler(LoginGoogle)).Name("login-google")
-	router.Handle("/logout", mpg.NewHandler(Logout)).Name("logout")
-	router.Handle("/push", mpg.NewHandler(SubscribeCallback)).Name("subscribe-callback")
-	router.Handle("/tasks/import-opml", mpg.NewHandler(ImportOpmlTask)).Name("import-opml-task")
-	router.Handle("/tasks/subscribe-feed", mpg.NewHandler(SubscribeFeed)).Name("subscribe-feed")
-	router.Handle("/tasks/update-feed-last", mpg.NewHandler(UpdateFeedLast)).Name("update-feed-last")
-	router.Handle("/tasks/update-feed-manual", mpg.NewHandler(UpdateFeed)).Name("update-feed-manual")
-	router.Handle("/tasks/update-feed", mpg.NewHandler(UpdateFeed)).Name("update-feed")
-	router.Handle("/tasks/update-feeds", mpg.NewHandler(UpdateFeeds)).Name("update-feeds")
-	router.Handle("/tasks/delete-old-feeds", mpg.NewHandler(DeleteOldFeeds)).Name("delete-old-feeds")
-	router.Handle("/tasks/delete-old-feed", mpg.NewHandler(DeleteOldFeed)).Name("delete-old-feed")
-	router.Handle("/user/add-subscription", mpg.NewHandler(AddSubscription)).Name("add-subscription")
-	router.Handle("/user/delete-account", mpg.NewHandler(DeleteAccount)).Name("delete-account")
-	router.Handle("/user/export-opml", mpg.NewHandler(ExportOpml)).Name("export-opml")
-	router.Handle("/user/feed-history", mpg.NewHandler(FeedHistory)).Name("feed-history")
-	router.Handle("/user/get-contents", mpg.NewHandler(GetContents)).Name("get-contents")
-	router.Handle("/user/get-feed", mpg.NewHandler(GetFeed)).Name("get-feed")
-	router.Handle("/user/get-stars", mpg.NewHandler(GetStars)).Name("get-stars")
-	router.Handle("/user/import/opml", mpg.NewHandler(ImportOpml)).Name("import-opml")
-	router.Handle("/user/list-feeds", mpg.NewHandler(ListFeeds)).Name("list-feeds")
-	router.Handle("/user/mark-read", mpg.NewHandler(MarkRead)).Name("mark-read")
-	router.Handle("/user/mark-unread", mpg.NewHandler(MarkUnread)).Name("mark-unread")
-	router.Handle("/user/save-options", mpg.NewHandler(SaveOptions)).Name("save-options")
-	router.Handle("/user/set-star", mpg.NewHandler(SetStar)).Name("set-star")
-	router.Handle("/user/upload-opml", mpg.NewHandler(UploadOpml)).Name("upload-opml")
+	router.HandleFunc("/", Main).Name("main")
+	router.HandleFunc("/login/google", LoginGoogle).Name("login-google")
+	router.HandleFunc("/logout", Logout).Name("logout")
+	router.HandleFunc("/push", SubscribeCallback).Name("subscribe-callback")
+	router.HandleFunc("/tasks/datastore-cleanup", DatastoreCleanup).Name("datastore-cleanup")
+	router.HandleFunc("/tasks/import-opml", ImportOpmlTask).Name("import-opml-task")
+	router.HandleFunc("/tasks/subscribe-feed", SubscribeFeed).Name("subscribe-feed")
+	router.HandleFunc("/tasks/update-feed-last", UpdateFeedLast).Name("update-feed-last")
+	router.HandleFunc("/tasks/update-feed-manual", UpdateFeed).Name("update-feed-manual")
+	router.HandleFunc("/tasks/update-feed", UpdateFeed).Name("update-feed")
+	router.HandleFunc("/tasks/update-feeds", UpdateFeeds).Name("update-feeds")
+	router.HandleFunc("/tasks/delete-old-feeds", DeleteOldFeeds).Name("delete-old-feeds")
+	router.HandleFunc("/tasks/delete-old-feed", DeleteOldFeed).Name("delete-old-feed")
+	router.HandleFunc("/user/add-subscription", AddSubscription).Name("add-subscription")
+	router.HandleFunc("/user/delete-account", DeleteAccount).Name("delete-account")
+	router.HandleFunc("/user/export-opml", ExportOpml).Name("export-opml")
+	router.HandleFunc("/user/feed-history", FeedHistory).Name("feed-history")
+	router.HandleFunc("/user/get-contents", GetContents).Name("get-contents")
+	router.HandleFunc("/user/get-feed", GetFeed).Name("get-feed")
+	router.HandleFunc("/user/get-stars", GetStars).Name("get-stars")
+	router.HandleFunc("/user/import/opml", ImportOpml).Name("import-opml")
+	router.HandleFunc("/user/list-feeds", ListFeeds).Name("list-feeds")
+	router.HandleFunc("/user/mark-read", MarkRead).Name("mark-read")
+	router.HandleFunc("/user/mark-unread", MarkUnread).Name("mark-unread")
+	router.HandleFunc("/user/save-options", SaveOptions).Name("save-options")
+	router.HandleFunc("/user/set-star", SetStar).Name("set-star")
+	router.HandleFunc("/user/upload-opml", UploadOpml).Name("upload-opml")
+	router.HandleFunc("/user/upload-url", UploadUrl).Name("upload-url")
 
-	router.Handle("/admin/all-feeds", mpg.NewHandler(AllFeeds)).Name("all-feeds")
-	router.Handle("/admin/all-feeds-opml", mpg.NewHandler(AllFeedsOpml)).Name("all-feeds-opml")
-	router.Handle("/admin/user", mpg.NewHandler(AdminUser)).Name("admin-user")
-	router.Handle("/date-formats", mpg.NewHandler(AdminDateFormats)).Name("admin-date-formats")
-	router.Handle("/admin/feed", mpg.NewHandler(AdminFeed)).Name("admin-feed")
-	router.Handle("/admin/subhub", mpg.NewHandler(AdminSubHub)).Name("admin-subhub-feed")
-	router.Handle("/admin/stats", mpg.NewHandler(AdminStats)).Name("admin-stats")
-	router.Handle("/admin/update-feed", mpg.NewHandler(AdminUpdateFeed)).Name("admin-update-feed")
-	router.Handle("/user/charge", mpg.NewHandler(Charge)).Name("charge")
-	router.Handle("/user/account", mpg.NewHandler(Account)).Name("account")
-	router.Handle("/user/uncheckout", mpg.NewHandler(Uncheckout)).Name("uncheckout")
+	router.HandleFunc("/admin/all-feeds", AllFeeds).Name("all-feeds")
+	router.HandleFunc("/admin/all-feeds-opml", AllFeedsOpml).Name("all-feeds-opml")
+	router.HandleFunc("/admin/user", AdminUser).Name("admin-user")
+	router.HandleFunc("/date-formats", AdminDateFormats).Name("admin-date-formats")
+	router.HandleFunc("/admin/feed", AdminFeed).Name("admin-feed")
+	router.HandleFunc("/admin/subhub", AdminSubHub).Name("admin-subhub-feed")
+	router.HandleFunc("/admin/stats", AdminStats).Name("admin-stats")
+	router.HandleFunc("/admin/update-feed", AdminUpdateFeed).Name("admin-update-feed")
+	router.HandleFunc("/user/charge", Charge).Name("charge")
+	router.HandleFunc("/user/account", Account).Name("account")
+	router.HandleFunc("/user/uncheckout", Uncheckout).Name("uncheckout")
 
-	//router.Handle("/tasks/delete-blobs", mpg.NewHandler(DeleteBlobs)).Name("delete-blobs")
+	//router.HandleFunc("/tasks/delete-blobs", DeleteBlobs).Name("delete-blobs")
 
 	if len(PUBSUBHUBBUB_HOST) > 0 {
 		u := url.URL{
@@ -107,23 +112,24 @@ func RegisterHandlers(r *mux.Router) {
 	if !isDevServer {
 		return
 	}
-	router.Handle("/user/clear-feeds", mpg.NewHandler(ClearFeeds)).Name("clear-feeds")
-	router.Handle("/user/clear-read", mpg.NewHandler(ClearRead)).Name("clear-read")
-	router.Handle("/test/atom.xml", mpg.NewHandler(TestAtom)).Name("test-atom")
+	router.HandleFunc("/user/clear-feeds", ClearFeeds).Name("clear-feeds")
+	router.HandleFunc("/user/clear-read", ClearRead).Name("clear-read")
+	router.HandleFunc("/test/atom.xml", TestAtom).Name("test-atom")
 }
 
-func Main(c mpg.Context, w http.ResponseWriter, r *http.Request) {
+func Main(w http.ResponseWriter, r *http.Request) {
+	c := r.Context()
 	if err := templates.ExecuteTemplate(w, "base.html", includes(c, w, r)); err != nil {
-		c.Errorf("%v", err)
+		log.Errorf(c, "%v", err)
 		serveError(w, err)
 	}
 	return
 }
 
-func addFeed(c mpg.Context, userid string, outline *OpmlOutline) error {
+func addFeed(c context.Context, userid string, outline *OpmlOutline) error {
 	gn := goon.FromContext(c)
 	o := outline.Outline[0]
-	c.Infof("adding feed %v to user %s", o.XmlUrl, userid)
+	log.Infof(c, "adding feed %v to user %s", o.XmlUrl, userid)
 	fu, ferr := url.Parse(o.XmlUrl)
 	if ferr != nil {
 		return ferr
@@ -168,7 +174,7 @@ func addFeed(c mpg.Context, userid string, outline *OpmlOutline) error {
 	return nil
 }
 
-func mergeUserOpml(c appengine.Context, ud *UserData, outlines ...*OpmlOutline) error {
+func mergeUserOpml(c context.Context, ud *UserData, outlines ...*OpmlOutline) error {
 	var fs Opml
 	json.Unmarshal(ud.Opml, &fs)
 	urls := make(map[string]bool)

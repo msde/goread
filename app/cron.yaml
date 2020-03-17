@@ -1,4 +1,8 @@
 cron:
 - description: hourly feed update
   url: /tasks/update-feeds
-  schedule: every 2 minutes
+  schedule: every 5 minutes
+# enable as needed, to cleanup obsolete datastore entities
+#- description: datastore cleanup
+#  url: /tasks/datastore-cleanup
+#  schedule: every 60 minutes

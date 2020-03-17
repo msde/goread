@@ -14,14 +14,14 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-package goapp
+package goread
 
 import (
 	"bytes"
+	"context"
 	"encoding/xml"
 	"fmt"
 	"html"
-	"html/template"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -31,7 +31,6 @@ import (
 	"time"
 	"unicode/utf8"
 
-	mpg "github.com/MiniProfiler/go/miniprofiler_gae"
 	"github.com/mjibson/goon"
 	"github.com/mjibson/goread/atom"
 	"github.com/mjibson/goread/rdf"
@@ -42,11 +41,12 @@ import (
 	"golang.org/x/text/encoding/charmap"
 	"golang.org/x/text/transform"
 
-	"appengine"
-	"appengine/memcache"
-	"appengine/taskqueue"
-	"appengine/urlfetch"
-	"appengine/user"
+	"google.golang.org/appengine"
+	"google.golang.org/appengine/log"
+	"google.golang.org/appengine/memcache"
+	"google.golang.org/appengine/taskqueue"
+	"google.golang.org/appengine/urlfetch"
+	"google.golang.org/appengine/user"
 )
 
 func serveError(w http.ResponseWriter, err error) {
@@ -61,7 +61,6 @@ type Includes struct {
 	Jquery              string
 	JqueryUI            string
 	Underscore          string
-	MiniProfiler        template.HTML
 	User                *User
 	Messages            []string
 	GoogleAnalyticsId   string
@@ -112,7 +111,7 @@ func init() {
 	}
 }
 
-func includes(c mpg.Context, w http.ResponseWriter, r *http.Request) *Includes {
+func includes(c context.Context, w http.ResponseWriter, r *http.Request) *Includes {
 	i := &Includes{
 		Angular:             Angular,
 		BootstrapCss:        BootstrapCss,
@@ -121,7 +120,6 @@ func includes(c mpg.Context, w http.ResponseWriter, r *http.Request) *Includes {
 		Jquery:              Jquery,
 		JqueryUI:            JqueryUI,
 		Underscore:          Underscore,
-		MiniProfiler:        c.Includes(),
 		GoogleAnalyticsId:   GOOGLE_ANALYTICS_ID,
 		GoogleAnalyticsHost: GOOGLE_ANALYTICS_HOST,
 		SubURL:              subURL,
@@ -334,7 +332,7 @@ var dateFormats = []string{
 
 const dateFormatCount = 500
 
-func parseDate(c appengine.Context, feed *Feed, ds ...string) (t time.Time, err error) {
+func parseDate(c context.Context, feed *Feed, ds ...string) (t time.Time, err error) {
 	for _, d := range ds {
 		d = strings.TrimSpace(d)
 		if d == "" {
@@ -388,7 +386,7 @@ func nilCharsetReader(cs string, input io.Reader) (io.Reader, error) {
 	return input, nil
 }
 
-func ParseFeed(c appengine.Context, contentType, origUrl, fetchUrl string, body []byte) (*Feed, []*Story, error) {
+func ParseFeed(c context.Context, contentType, origUrl, fetchUrl string, body []byte) (*Feed, []*Story, error) {
 	cr := defaultCharsetReader
 	if !bytes.EqualFold(body[:len(xml.Header)], []byte(xml.Header)) {
 		enc, err := encodingReader(body, contentType)
@@ -414,16 +412,16 @@ func ParseFeed(c appengine.Context, contentType, origUrl, fetchUrl string, body 
 		feed, stories, rdferr = parseRDF(c, body, cr)
 	}
 	if feed == nil {
-		c.Warningf("atom parse error: %s", atomerr.Error())
-		c.Warningf("xml parse error: %s", rsserr.Error())
-		c.Warningf("rdf parse error: %s", rdferr.Error())
+		log.Warningf(c, "atom parse error: %s", atomerr.Error())
+		log.Warningf(c, "xml parse error: %s", rsserr.Error())
+		log.Warningf(c, "rdf parse error: %s", rdferr.Error())
 		return nil, nil, fmt.Errorf("Could not parse feed data")
 	}
 	feed.Url = origUrl
 	return parseFix(c, feed, stories, fetchUrl)
 }
 
-func parseAtom(c appengine.Context, body []byte, charsetReader func(string, io.Reader) (io.Reader, error)) (*Feed, []*Story, error) {
+func parseAtom(c context.Context, body []byte, charsetReader func(string, io.Reader) (io.Reader, error)) (*Feed, []*Story, error) {
 	var f Feed
 	var s []*Story
 	var err error
@@ -492,7 +490,7 @@ func parseAtom(c appengine.Context, body []byte, charsetReader func(string, io.R
 	return &f, s, nil
 }
 
-func parseRSS(c appengine.Context, body []byte, charsetReader func(string, io.Reader) (io.Reader, error)) (*Feed, []*Story, error) {
+func parseRSS(c context.Context, body []byte, charsetReader func(string, io.Reader) (io.Reader, error)) (*Feed, []*Story, error) {
 	var f Feed
 	var s []*Story
 	r := rss.Rss{}
@@ -506,7 +504,7 @@ func parseRSS(c appengine.Context, body []byte, charsetReader func(string, io.Re
 	if t, err := parseDate(c, &f, r.LastBuildDate, r.PubDate); err == nil {
 		f.Updated = t
 	} else {
-		c.Warningf("no rss feed date: %v", f.Link)
+		log.Warningf(c, "no rss feed date: %v", f.Link)
 	}
 	f.Link = r.BaseLink()
 	f.Hub = r.Hub()
@@ -548,7 +546,7 @@ func parseRSS(c appengine.Context, body []byte, charsetReader func(string, io.Re
 	return &f, s, nil
 }
 
-func parseRDF(c appengine.Context, body []byte, charsetReader func(string, io.Reader) (io.Reader, error)) (*Feed, []*Story, error) {
+func parseRDF(c context.Context, body []byte, charsetReader func(string, io.Reader) (io.Reader, error)) (*Feed, []*Story, error) {
 	var f Feed
 	var s []*Story
 	rd := rdf.RDF{}
@@ -600,7 +598,7 @@ func atomTitle(t *atom.Text) string {
 	return textTitle(t.Body)
 }
 
-func findBestAtomLink(c appengine.Context, links []atom.Link) string {
+func findBestAtomLink(c context.Context, links []atom.Link) string {
 	getScore := func(l atom.Link) int {
 		switch {
 		case l.Rel == "hub":
@@ -631,7 +629,7 @@ func findBestAtomLink(c appengine.Context, links []atom.Link) string {
 	return bestlink
 }
 
-func parseFix(c appengine.Context, f *Feed, ss []*Story, fetchUrl string) (*Feed, []*Story, error) {
+func parseFix(c context.Context, f *Feed, ss []*Story, fetchUrl string) (*Feed, []*Story, error) {
 	g := goon.FromContext(c)
 	f.Checked = time.Now()
 	fk := g.Key(f)
@@ -645,7 +643,7 @@ func parseFix(c appengine.Context, f *Feed, ss []*Story, fetchUrl string) (*Feed
 	}
 	base, err := url.Parse(f.Link)
 	if err != nil {
-		c.Warningf("unable to parse link: %v", f.Link)
+		log.Warningf(c, "unable to parse link: %v", f.Link)
 	}
 
 	var nss []*Story
@@ -670,7 +668,7 @@ func parseFix(c appengine.Context, f *Feed, ss []*Story, fetchUrl string) (*Feed
 			} else if s.Title != "" {
 				s.Id = s.Title
 			} else {
-				c.Errorf("story has no id: %v", s)
+				log.Errorf(c, "story has no id: %v", s)
 				continue
 			}
 		}
@@ -688,13 +686,13 @@ func parseFix(c appengine.Context, f *Feed, ss []*Story, fetchUrl string) (*Feed
 			if err == nil {
 				s.Link = link.String()
 			} else {
-				c.Warningf("unable to resolve link: %v", s.Link)
+				log.Warningf(c, "unable to resolve link: %v", s.Link)
 			}
 		}
 		const keySize = 500
 		sk := g.Key(s)
 		if kl := len(sk.String()); kl > keySize {
-			c.Warningf("key too long: %v, %v, %v", kl, f.Url, s.Id)
+			log.Warningf(c, "key too long: %v, %v, %v", kl, f.Url, s.Id)
 			continue
 		}
 		su, serr := url.Parse(s.Link)
@@ -711,7 +709,7 @@ func parseFix(c appengine.Context, f *Feed, ss []*Story, fetchUrl string) (*Feed
 	return f, nss, nil
 }
 
-func loadImage(c appengine.Context, f *Feed) {
+func loadImage(c context.Context, f *Feed) {
 	if f.ImageDate.After(time.Now()) {
 		return
 	}
@@ -770,7 +768,7 @@ const notViewedDisabled = oldDuration + time.Hour*24*7
 
 var timeMax time.Time = time.Date(3000, time.January, 1, 0, 0, 0, 0, time.UTC)
 
-func scheduleNextUpdate(c appengine.Context, f *Feed) {
+func scheduleNextUpdate(c context.Context, f *Feed) {
 	loadImage(c, f)
 	if f.NotViewed() {
 		f.NextUpdate = timeMax
@@ -817,7 +815,7 @@ func scheduleNextUpdate(c appengine.Context, f *Feed) {
 	f.NextUpdate = time.Now().Add(pause)
 }
 
-func taskSender(c mpg.Context, queue string, tc chan *taskqueue.Task, done chan bool) {
+func taskSender(c context.Context, queue string, tc chan *taskqueue.Task, done chan bool) {
 	const taskLimit = 100
 	tasks := make([]*taskqueue.Task, 0, taskLimit)
 	send := func() {
@@ -829,10 +827,10 @@ func taskSender(c mpg.Context, queue string, tc chan *taskqueue.Task, done chan 
 					continue
 				}
 				errorCount++
-				c.Warningf("error for task %v: %v", queued[i], merr)
+				log.Warningf(c, "error for task %v: %v", queued[i], merr)
 			}
 		}
-		c.Infof("added %v tasks with %v errors", len(tasks), errorCount)
+		log.Infof(c, "added %v tasks with %v errors", len(tasks), errorCount)
 		tasks = tasks[0:0]
 	}
 	for t := range tc {

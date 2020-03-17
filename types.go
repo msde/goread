@@ -14,11 +14,12 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-package goapp
+package goread
 
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"encoding/base64"
 	"fmt"
 	"io/ioutil"
@@ -27,10 +28,11 @@ import (
 
 	"github.com/mjibson/goon"
 
-	"appengine"
-	"appengine/datastore"
-	"appengine/taskqueue"
-	"appengine/user"
+	"google.golang.org/appengine"
+	"google.golang.org/appengine/datastore"
+	"google.golang.org/appengine/log"
+	"google.golang.org/appengine/taskqueue"
+	"google.golang.org/appengine/user"
 )
 
 type User struct {
@@ -100,7 +102,7 @@ type UserStar struct {
 	Created time.Time      `datastore:"c"`
 }
 
-func starKey(c appengine.Context, feed, story string) *UserStar {
+func starKey(c context.Context, feed, story string) *UserStar {
 	cu := user.Current(c)
 	gn := goon.FromContext(c)
 	u := User{Id: cu.ID}
@@ -140,21 +142,17 @@ type Feed struct {
 	NoAds      bool          `datastore:"o,noindex" json:"-"`
 }
 
-func (f *Feed) Subscribe(c appengine.Context) {
+func (f *Feed) Subscribe(c context.Context) {
 	if !f.IsSubscribed() {
 		gn := goon.FromContext(c)
-		gn.Put(&Log{
-			Parent: gn.Key(&f),
-			Id:     time.Now().UnixNano(),
-			Text:   fmt.Sprintf("Subscribe %v", f.Subscribed.String()),
-		})
+		log.Debugf(c, "Subscribe %v %v", gn.Key(&f), f.Subscribed.String())
 		t := taskqueue.NewPOSTTask(routeUrl("subscribe-feed"), url.Values{
 			"feed": {f.Url},
 		})
 		if _, err := taskqueue.Add(c, t, "update-manual"); err != nil {
-			c.Errorf("taskqueue error: %v", err.Error())
+			log.Errorf(c, "taskqueue error: %v", err.Error())
 		} else {
-			c.Warningf("subscribe feed: %v", f.Url)
+			log.Warningf(c, "subscribe feed: %v", f.Url)
 		}
 	}
 }
@@ -250,7 +248,7 @@ func (s Stories) Less(i, j int) bool { return s[i].Created.Before(s[j].Created) 
 func (s Stories) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 
 type Log struct {
-	_kind  string         `goon:"kind,L"`
+	_kind  string         `goon:"kind,L"` // TODO obsolete remove
 	Id     int64          `datastore:"-" goon:"id"`
 	Parent *datastore.Key `datastore:"-" goon:"parent"`
 	Text   string         `datastore:"t,noindex"`
