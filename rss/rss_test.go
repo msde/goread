@@ -21,7 +21,7 @@ import (
 	"strings"
 	"testing"
 
-	"code.google.com/p/go-charset/charset"
+	"github.com/msde/go-charset/charset"
 )
 
 func TestCDATALink(t *testing.T) {

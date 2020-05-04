@@ -32,8 +32,8 @@ import (
 	"sync"
 	"time"
 
-	"code.google.com/p/go-charset/charset"
 	"github.com/mjibson/goon"
+	"github.com/msde/go-charset/charset"
 
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/blobstore"

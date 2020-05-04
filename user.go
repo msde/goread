@@ -34,10 +34,10 @@ import (
 	"sync"
 	"time"
 
-	"code.google.com/p/go-charset/charset"
-	_ "code.google.com/p/go-charset/data"
 	"github.com/mjibson/goon"
-	"github.com/mjibson/goread/sanitizer"
+	"github.com/msde/go-charset/charset"
+	_ "github.com/msde/go-charset/data"
+	"github.com/msde/goread/sanitizer"
 
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/blobstore"

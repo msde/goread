@@ -5,7 +5,7 @@ import (
 
 	"github.com/gorilla/mux"
 
-	app "github.com/mjibson/goread"
+	app "github.com/msde/goread"
 
 	"google.golang.org/appengine"
 )
