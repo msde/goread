@@ -7,14 +7,11 @@ has been archived. This is a fork, updated for compatibility with go111
 by [Michael Blakeley](https://github.com/mblakele).
 
 ## setting up a local dev environment
-
-1. Install [Python 2.7](http://www.python.org/download/releases/2.7.5/) and make sure it is in your `PATH`. (Google App Engine doesn't yet work with Python 3.)
-1. Install [Git](http://gitscm.com/) and [Mercurial](http://mercurial.selenic.com/wiki/Download) and make sure `git` and `hg` are in your `PATH`.
-1. Install the [Go App Engine SDK](https://developers.google.com/appengine/downloads#Google_App_Engine_SDK_for_Go).
+1. Install [Git](http://gitscm.com/) and make sure `git` is in your `PATH`.
+1. Install the [Go App Engine SDK](https://cloud.google.com/appengine/docs/standard/go/setting-up-environment).
 1. Set your `GOPATH` (to something like `/home/user`), and make sure it's a directory that exists. (Note: set this on your machine's environment, not in the go.bat file.)
-1. Further commands use `goapp` which lives in the `go_appengine` directory from the SDK. Make sure it's in your `PATH`.
-1. Download goread and dependencies by running: `goapp get -d github.com/mblakele/goread`. You may get messages about unrecognized imports. Ignore them.
-1. `cd $GOPATH/src/github.com/mblakele/goread/app`.
+1. Download goread and dependencies by running: `go get -d github.com/msde/goread`. You may get messages about unrecognized imports. Ignore them.
+1. `cd $GOPATH/src/github.com/msde/goread/app`.
 1. Copy `app.sample.yaml` to `app.yaml`.
 1. `cd ..`
 1. Copy `settings.go.dist` to `settings.go`.
@@ -31,9 +28,9 @@ by [Michael Blakeley](https://github.com/mblakele).
 ## self host on production app engine servers
 
 1. Set up a local dev environment as described above.
-1. Create a [new app engine application](https://cloud.google.com/console?getstarted=https://appengine.google.com).
-1. In `app.yaml`, change the first line to contain the name of the application you just created.
-1. Deploy: `(cd app && gcloud app deploy deploy && gcloud app deploy cron.yaml)`
+1. Create a [new app engine application](https://cloud.google.com/appengine/docs/standard/go/quickstart).
+1. Set the application as default : `gcloud config set project [PROJECT ID]`
+1. Deploy: `(cd app && gcloud app deploy && gcloud app deploy cron.yaml)`
 
 ### other useful commands
 
